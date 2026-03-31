@@ -152,7 +152,7 @@ class MLflowGreenTaxiMetadataTracking:
             
             print(f"\n✓ Logged GREEN Taxi (LPEP) MetaDataset")
             print(f"  Dataset: {meta_dataset.name}")
-            print(f"  Schema columns: {len(meta_dataset.schema.columns)}")
+            print(f"  Schema columns: {len(list(meta_dataset.schema))}")
             print(f"  Source: {meta_dataset.source.uri}")
             print(f"  Data Dictionary: March 18, 2025")
             print(f"  Size: Metadata only (no data stored)")
@@ -197,16 +197,20 @@ class MLflowGreenTaxiMetadataTracking:
             print(f"\n✓ Logged GREEN Taxi Dataset with Data and Metadata")
             print(f"  Rows: {len(data_df):,}")
             print(f"  Columns: {len(data_df.columns)}")
-            print(f"  Schema columns: {len(meta_dataset.schema.columns)}")
+            print(f"  Schema columns: {len(list(meta_dataset.schema))}")
             
             return meta_dataset
     
     def display_schema(self):
         schema = self.create_green_taxi_schema()
-        for col in schema.columns:
+        
+        print("GREEN Taxi (LPEP) Schema")
+        
+        # ✅ Iterate schema directly
+        for i, col in enumerate(schema, 1):
             description = GREEN_TAXI_DESCRIPTIONS.get(col.name, "")
-            print(f"{col.name}: {col.type}")
-            print(f"  {description}")
+            print(f"\n{i}. {col.name}")
+            print(f"   Type: {col.type}")
             print(f"   Description: {description}")
  
 
