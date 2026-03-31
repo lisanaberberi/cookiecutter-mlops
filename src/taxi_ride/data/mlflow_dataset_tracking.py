@@ -482,7 +482,7 @@ class MLflowDatasetTrackingExample:
             })
             
             # Log model
-            mlflow.sklearn.log_model(model, "fare_prediction_model", input_example=X_test.head())
+            mlflow.sklearn.log_model(model, name="fare_prediction_model", input_example=X_test.head())
             
             print(f"\nModel Training Results:")
             print(f"  RMSE: ${rmse:.2f}")
@@ -563,7 +563,7 @@ class MLflowDatasetTrackingExample:
             mlflow.log_input(eval_dataset, context="evaluation")
             
             # Log the model first
-            mlflow.sklearn.log_model(model, "model", input_example=X_test.head())
+            mlflow.sklearn.log_model(model,  name="model", input_example=X_test.head())
             
             # Get model URI
             model_uri = f"runs:/{mlflow.active_run().info.run_id}/model"
