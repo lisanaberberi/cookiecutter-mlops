@@ -215,6 +215,21 @@ class MLflowGreenTaxiMetadataTracking:
             print(f"   Type: {col.type}")
             print(f"   Description: {col.description}")
 
+    def display_schema(self):
+        """Display the GREEN Taxi schema with descriptions"""
+        
+        schema = self.create_green_taxi_schema()
+        
+        print("\n" + "="*80)
+        print("GREEN Taxi (LPEP) Schema - NYC TLC Data Dictionary - March 18, 2025")
+        print("="*80)
+        
+        for i, col in enumerate(schema.mlflow_colspec, 1):
+            description = GREEN_TAXI_DESCRIPTIONS.get(col.name, "")
+            print(f"\n{i}. {col.name}")
+            print(f"   Type: {col.type}")
+            print(f"   Description: {description}")
+ 
 
 # Usage Examples
 # ==============
