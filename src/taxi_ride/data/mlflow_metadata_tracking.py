@@ -13,6 +13,33 @@ from mlflow.data.meta_dataset import MetaDataset
 from mlflow.types import Schema, ColSpec, DataType
 
 
+
+ 
+# GREEN Taxi Column Descriptions (from NYC TLC Data Dictionary - March 18, 2025)
+GREEN_TAXI_DESCRIPTIONS = {
+    "VendorID": "LPEP provider (1: Creative Mobile Technologies, 2: Curb Mobility, 6: Myle Technologies)",
+    "lpep_pickup_datetime": "Date and time when the meter was engaged",
+    "lpep_dropoff_datetime": "Date and time when the meter was disengaged",
+    "store_and_fwd_flag": "Store and forward flag (Y/N) - trip held in vehicle memory before sending to vendor",
+    "RatecodeID": "Final rate code (1: Standard, 2: JFK, 3: Newark, 4: Nassau/Westchester, 5: Negotiated, 6: Group, 99: Null/Unknown)",
+    "PULocationID": "TLC Taxi Zone in which taximeter was engaged (1-263)",
+    "DOLocationID": "TLC Taxi Zone in which taximeter was disengaged (1-263)",
+    "passenger_count": "Number of passengers in the vehicle",
+    "trip_distance": "Elapsed trip distance in miles reported by the taximeter",
+    "fare_amount": "Time-and-distance fare calculated by the meter (in dollars)",
+    "extra": "Miscellaneous extras and surcharges (in dollars)",
+    "mta_tax": "Tax automatically triggered based on the metered rate (in dollars)",
+    "tip_amount": "Tip amount - auto-populated for credit card tips, excludes cash tips (in dollars)",
+    "tolls_amount": "Total amount of all tolls paid in trip (in dollars)",
+    "improvement_surcharge": "Improvement surcharge assessed at flag drop, started being levied in 2015 (in dollars)",
+    "total_amount": "Total amount charged to passengers, excludes cash tips (in dollars)",
+    "payment_type": "Payment method (0: Flex Fare, 1: Credit, 2: Cash, 3: No charge, 4: Dispute, 5: Unknown, 6: Voided)",
+    "trip_type": "Trip type (1: Street-hail, 2: Dispatch) - auto-assigned based on metered rate but can be altered by driver",
+    "congestion_surcharge": "Total NYS congestion surcharge collected in trip (in dollars)",
+    "cbd_congestion_fee": "Per-trip charge for MTA Congestion Relief Zone starting Jan 5, 2025 (in dollars)",
+}
+ 
+ 
 class MLflowGreenTaxiMetadataTracking:
     """Track GREEN Taxi (LPEP) dataset metadata using MLflow MetaDataset"""
     
@@ -37,121 +64,53 @@ class MLflowGreenTaxiMetadataTracking:
             Schema: MLflow Schema with 20 columns
         """
         green_taxi_schema = Schema([
-            ColSpec(
-                type=DataType.integer,
-                name="VendorID",
-                description="LPEP provider (1: Creative Mobile Technologies, 2: Curb Mobility, 6: Myle Technologies)"
-            ),
-            ColSpec(
-                type=DataType.datetime,
-                name="lpep_pickup_datetime",
-                description="Date and time when the meter was engaged"
-            ),
-            ColSpec(
-                type=DataType.datetime,
-                name="lpep_dropoff_datetime",
-                description="Date and time when the meter was disengaged"
-            ),
-            ColSpec(
-                type=DataType.string,
-                name="store_and_fwd_flag",
-                description="Store and forward flag (Y/N) - trip held in vehicle memory before sending to vendor"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="RatecodeID",
-                description="Final rate code (1: Standard, 2: JFK, 3: Newark, 4: Nassau/Westchester, 5: Negotiated, 6: Group, 99: Null/Unknown)"
-            ),
-            ColSpec(
-                type=DataType.integer,
-                name="PULocationID",
-                description="TLC Taxi Zone in which taximeter was engaged (1-263)"
-            ),
-            ColSpec(
-                type=DataType.integer,
-                name="DOLocationID",
-                description="TLC Taxi Zone in which taximeter was disengaged (1-263)"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="passenger_count",
-                description="Number of passengers in the vehicle"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="trip_distance",
-                description="Elapsed trip distance in miles reported by the taximeter"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="fare_amount",
-                description="Time-and-distance fare calculated by the meter (in dollars)"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="extra",
-                description="Miscellaneous extras and surcharges (in dollars)"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="mta_tax",
-                description="Tax automatically triggered based on the metered rate (in dollars)"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="tip_amount",
-                description="Tip amount - auto-populated for credit card tips, excludes cash tips (in dollars)"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="tolls_amount",
-                description="Total amount of all tolls paid in trip (in dollars)"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="improvement_surcharge",
-                description="Improvement surcharge assessed at flag drop, started being levied in 2015 (in dollars)"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="total_amount",
-                description="Total amount charged to passengers, excludes cash tips (in dollars)"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="payment_type",
-                description="Payment method (0: Flex Fare, 1: Credit, 2: Cash, 3: No charge, 4: Dispute, 5: Unknown, 6: Voided)"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="trip_type",
-                description="Trip type (1: Street-hail, 2: Dispatch) - auto-assigned based on metered rate but can be altered by driver"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="congestion_surcharge",
-                description="Total NYS congestion surcharge collected in trip (in dollars)"
-            ),
-            ColSpec(
-                type=DataType.double,
-                name="cbd_congestion_fee",
-                description="Per-trip charge for MTA Congestion Relief Zone starting Jan 5, 2025 (in dollars)"
-            ),
+            ColSpec(type=DataType.integer, name="VendorID"),
+            ColSpec(type=DataType.datetime, name="lpep_pickup_datetime"),
+            ColSpec(type=DataType.datetime, name="lpep_dropoff_datetime"),
+            ColSpec(type=DataType.string, name="store_and_fwd_flag"),
+            ColSpec(type=DataType.double, name="RatecodeID"),
+            ColSpec(type=DataType.integer, name="PULocationID"),
+            ColSpec(type=DataType.integer, name="DOLocationID"),
+            ColSpec(type=DataType.double, name="passenger_count"),
+            ColSpec(type=DataType.double, name="trip_distance"),
+            ColSpec(type=DataType.double, name="fare_amount"),
+            ColSpec(type=DataType.double, name="extra"),
+            ColSpec(type=DataType.double, name="mta_tax"),
+            ColSpec(type=DataType.double, name="tip_amount"),
+            ColSpec(type=DataType.double, name="tolls_amount"),
+            ColSpec(type=DataType.double, name="improvement_surcharge"),
+            ColSpec(type=DataType.double, name="total_amount"),
+            ColSpec(type=DataType.double, name="payment_type"),
+            ColSpec(type=DataType.double, name="trip_type"),
+            ColSpec(type=DataType.double, name="congestion_surcharge"),
+            ColSpec(type=DataType.double, name="cbd_congestion_fee"),
         ])
         
         return green_taxi_schema
     
     def create_green_taxi_metadataset(self, source_path="data/raw/green_tripdata_2023-10.parquet"):
-        """Create MetaDataset with GREEN Taxi schema"""
+        """
+        Create a MetaDataset with GREEN Taxi (LPEP) schema metadata.
         
+        This creates a metadata-only dataset that references the source data
+        without storing the actual data in MLflow artifacts.
+        
+        Args:
+            source_path: Path to the green taxi parquet file
+        
+        Returns:
+            MetaDataset: Dataset with schema metadata from NYC TLC LPEP data dictionary
+        """
+        
+        # Create schema
         schema = self.create_green_taxi_schema()
         
-        # Use string path directly 
+        # Create MetaDataset with schema
         meta_dataset = MetaDataset(
-            source=source_path,  # ← use string path
+            source=source_path,
             name="nyc-green-taxi-lpep",
             schema=schema,
-            description="NYC GREEN Taxi (LPEP) Trip Records"
+            description="NYC GREEN Taxi (LPEP) Trip Records from TLC - March 18, 2025 Data Dictionary"
         )
         
         return meta_dataset
