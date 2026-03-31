@@ -12,6 +12,8 @@ import numpy as np
 from mlflow.data.meta_dataset import MetaDataset
 from mlflow.types import Schema, ColSpec, DataType
 
+from mlflow.data.http_dataset_source import HTTPDatasetSource
+
 
 
  
@@ -52,7 +54,7 @@ class MLflowGreenTaxiMetadataTracking:
             data_dir: Directory containing green taxi parquet files
         """
         mlflow.set_tracking_uri(mlflow_tracking_uri)
-        mlflow.set_experiment("Green_Taxi_LPEP_Metadata_Tracking")
+        mlflow.set_experiment("Green_Taxi_Metadata_Tracking")
         self.data_dir = data_dir
     
     def create_green_taxi_schema(self):
@@ -88,7 +90,7 @@ class MLflowGreenTaxiMetadataTracking:
         
         return green_taxi_schema
     
-    def create_green_taxi_metadataset(self, source_path="data/raw/green_tripdata_2023-10.parquet"):
+    def create_green_taxi_metadataset(self, source_url="data/raw/green_tripdata_2023-10.parquet"):
         """
         Create a MetaDataset with GREEN Taxi (LPEP) schema metadata.
         
@@ -105,13 +107,15 @@ class MLflowGreenTaxiMetadataTracking:
         # Create schema
         schema = self.create_green_taxi_schema()
         
+        # Create HTTP dataset source pointing to NYC TLC data dictionary
+        source = HTTPDatasetSource(url=source_url)
+        
         # Create MetaDataset with schema
         meta_dataset = MetaDataset(
-            source=source_path,
+            source=source,  # ← Use HTTPDatasetSource object
             name="nyc-green-taxi-lpep",
             schema=schema
         )
-        
         return meta_dataset
     
     def log_metadataset_only(self, run_name="Green_Taxi_MetaDataset_Only"):
@@ -152,7 +156,7 @@ class MLflowGreenTaxiMetadataTracking:
             print(f"\n✓ Logged GREEN Taxi (LPEP) MetaDataset")
             print(f"  Dataset: {meta_dataset.name}")
             print(f"  Schema columns: {len(list(meta_dataset.schema))}")
-            print(f"  Source: {meta_dataset.source.uri}")
+            print(f"  Source: {meta_dataset.source.url}")
             print(f"  Data Dictionary: March 18, 2025")
             print(f"  Size: Metadata only (no data stored)")
             
