@@ -10,7 +10,6 @@ import mlflow
 import pandas as pd
 import numpy as np
 from mlflow.data.meta_dataset import MetaDataset
-from mlflow.data.local_dataset_source import LocalDatasetSource
 from mlflow.types import Schema, ColSpec, DataType
 
 
@@ -143,34 +142,16 @@ class MLflowGreenTaxiMetadataTracking:
         return green_taxi_schema
     
     def create_green_taxi_metadataset(self, source_path="data/raw/green_tripdata_2023-10.parquet"):
-        """
-        Create a MetaDataset with GREEN Taxi (LPEP) schema metadata.
+        """Create MetaDataset with GREEN Taxi schema"""
         
-        This creates a metadata-only dataset that references the source data
-        without storing the actual data in MLflow artifacts.
-        
-        Args:
-            source_path: Path to the green taxi parquet file
-        
-        Returns:
-            MetaDataset: Dataset with schema metadata from NYC TLC LPEP data dictionary
-        """
-        
-        # Create schema
         schema = self.create_green_taxi_schema()
         
-        # Create local dataset source pointing to the parquet file
-        source = LocalDatasetSource(
-            uri=f"file://{source_path}",
-            description="NYC GREEN Taxi (LPEP) Trip Records - October 2023"
-        )
-        
-        # Create MetaDataset with schema
+        # Use string path directly 
         meta_dataset = MetaDataset(
-            source=source,
+            source=source_path,  # ← use string path
             name="nyc-green-taxi-lpep",
             schema=schema,
-            description="NYC GREEN Taxi (LPEP) Trip Records from TLC - March 18, 2025 Data Dictionary"
+            description="NYC GREEN Taxi (LPEP) Trip Records"
         )
         
         return meta_dataset
