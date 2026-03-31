@@ -201,19 +201,6 @@ class MLflowGreenTaxiMetadataTracking:
             
             return meta_dataset
     
-    def display_schema(self):
-        """Display the GREEN Taxi schema"""
-        
-        schema = self.create_green_taxi_schema()
-        
-        print("\n" + "="*70)
-        print("GREEN Taxi (LPEP) Schema - March 18, 2025 Data Dictionary")
-        print("="*70)
-        
-        for i, col in enumerate(schema.mlflow_colspec, 1):
-            print(f"\n{i}. {col.name}")
-            print(f"   Type: {col.type}")
-            print(f"   Description: {col.description}")
 
     def display_schema(self):
         """Display the GREEN Taxi schema with descriptions"""
