@@ -109,8 +109,7 @@ class MLflowGreenTaxiMetadataTracking:
         meta_dataset = MetaDataset(
             source=source_path,
             name="nyc-green-taxi-lpep",
-            schema=schema,
-            description="NYC GREEN Taxi (LPEP) Trip Records from TLC - March 18, 2025 Data Dictionary"
+            schema=schema
         )
         
         return meta_dataset
