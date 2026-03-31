@@ -13,6 +13,9 @@ from mlflow.data.meta_dataset import MetaDataset
 from mlflow.types import Schema, ColSpec, DataType
 
 from mlflow.data.http_dataset_source import HTTPDatasetSource
+from utils  import get_git_info, build_github_data_path
+import mlflow.entities
+
 
 
 
@@ -97,8 +100,13 @@ class MLflowGreenTaxiMetadataTracking:
         This creates a metadata-only dataset that references the source data
         without storing the actual data in MLflow artifacts.
         
+        MLflow automatically captures git information:
+        - mlflow.source.git.commit: Current commit hash
+        - mlflow.source.git.branch: Current branch
+        - mlflow.source.git.repoURL: Repository URL
+        
         Args:
-            source_path: Path to the green taxi parquet file
+            source_url: URL or path to the green taxi data source
         
         Returns:
             MetaDataset: Dataset with schema metadata from NYC TLC LPEP data dictionary
@@ -107,15 +115,16 @@ class MLflowGreenTaxiMetadataTracking:
         # Create schema
         schema = self.create_green_taxi_schema()
         
-        # Create HTTP dataset source pointing to NYC TLC data dictionary
+        # Create HTTP dataset source
         source = HTTPDatasetSource(url=source_url)
         
         # Create MetaDataset with schema
         meta_dataset = MetaDataset(
-            source=source,  # ← Use HTTPDatasetSource object
+            source=source,
             name="nyc-green-taxi-lpep",
             schema=schema
         )
+        
         return meta_dataset
     
     def log_metadataset_only(self, run_name="Green_Taxi_MetaDataset_Only"):
@@ -131,15 +140,31 @@ class MLflowGreenTaxiMetadataTracking:
             # Log metadata-only dataset
             mlflow.log_input(meta_dataset, context="external_data")
             
-            # Log tags with TLC information
-            mlflow.set_tag("dataset_type", "NYC GREEN Taxi (LPEP)")
-            mlflow.set_tag("data_dictionary_version", "March 18, 2025")
-            mlflow.set_tag("source_url", "http://www.nyc.gov/html/tlc/html/about/trip_record_data.shtml")
-            mlflow.set_tag("data_period", "October 2023")
-            mlflow.set_tag("vendor_count", "3")
-            mlflow.set_tag("taxi_zones", "1-263")
-            mlflow.set_tag("trip_types", "2")
-            mlflow.set_tag("metadata_only", "true")
+            # Get git info
+            git_info = get_git_info()
+
+            if git_info:
+                # Build GitHub data path
+                github_data_path = build_github_data_path(
+                    git_info["repo_url"], 
+                    git_info["commit_hash"]
+                )
+                
+                # Use in MLflow
+                mlflow.set_tag("github_data_path", github_data_path)
+                mlflow.set_tag("git_commit", git_info["commit_hash"])
+                mlflow.set_tag("git_branch", git_info["branch"])
+
+                # Log tags with TLC information
+                mlflow.set_tag("dataset_type", "NYC GREEN Taxi (LPEP)")
+                mlflow.set_tag("data_dictionary_version", "March 18, 2025")
+                mlflow.set_tag("source_url", "http://www.nyc.gov/html/tlc/html/about/trip_record_data.shtml")
+                mlflow.set_tag("data_period", "October 2023")
+                mlflow.set_tag("vendor_count", "3")
+                mlflow.set_tag("taxi_zones", "1-263")
+                mlflow.set_tag("trip_types", "2")
+                mlflow.set_tag("metadata_only", "true")
+            
             
             # Log metadata as parameters
             mlflow.log_params({
