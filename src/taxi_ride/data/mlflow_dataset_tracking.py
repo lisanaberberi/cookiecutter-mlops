@@ -24,9 +24,10 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+#mlflow.set_tracking_uri("http://127.0.0.1:5000")
+mlflow.set_tracking_uri("https://mlflow-oidc-auth.dev.ai4eosc.eu")
 
-EXPERIMENT_NAME = "nyc-taxi-duration-mlmodels-update"
+EXPERIMENT_NAME = "nyc-taxi-duration-dataset-tracking"
 # mlflow.set_experiment(EXPERIMENT_NAME)
 
 
@@ -41,7 +42,7 @@ class MLflowDatasetTrackingExample:
     
     def __init__(
         self, 
-        mlflow_tracking_uri: str = "http://localhost:5000",
+        mlflow_tracking_uri: str = "https://mlflow-oidc-auth.dev.ai4eosc.eu",
         data_dir: Optional[str] = None
     ):
         """
@@ -53,7 +54,7 @@ class MLflowDatasetTrackingExample:
         """
         mlflow.set_tracking_uri(mlflow_tracking_uri)
 
-        mlflow.set_experiment("nyc-taxi-duration-mlmodels-update") 
+        mlflow.set_experiment("nyc-taxi-duration-dataset-tracking") 
         self.experiment_name = EXPERIMENT_NAME
         
         if data_dir is None:
@@ -335,10 +336,10 @@ class MLflowDatasetTrackingExample:
                     
                 elif version == "3.0":
                     # Previous step + remove missing values + distance filtering
-                    data = base_data.drop_duplicates().reset_index(drop=True)
-                    if 'fare_amount' in data.columns:
-                        data = data[data['fare_amount'] <= 200]
-                    data = data.dropna().reset_index(drop=True)
+                    cols_to_keep = ['trip_distance', 'fare_amount', 'passenger_count']
+                    data = base_data[cols_to_keep].drop_duplicates().reset_index(drop=True)
+                    data = data[data['fare_amount'] <= 200]
+                    data = data.dropna().reset_index(drop=True) 
                     # Keep realistic trip distances (0.1 to 50 miles)
                     if 'trip_distance' in data.columns:
                         data = data[
@@ -490,6 +491,10 @@ class MLflowDatasetTrackingExample:
             print(f"  R² Score: {r2:.4f}")
             print(f"  Test samples: {len(X_test)}")
             print(f"  Dataset digest: {dataset.digest}")
+
+            # Log actual data as artifact
+            train_data.to_parquet(f"/tmp/{dataset.name}.parquet", index=False)
+            mlflow.log_artifact(f"/tmp/{dataset.name}.parquet", artifact_path="datasets")
             
             mlflow.end_run()
         
@@ -497,7 +502,7 @@ class MLflowDatasetTrackingExample:
     
     def example_5_evaluation_with_dataset(self):
         """
-        Example 5: Model Evaluation with MLflow Evaluate - NYC Taxi
+        Example 5: Model Evaluation with model.predict() + metric calculation - NYC Taxi
         
         Demonstrates:
         - Using datasets with model evaluation
@@ -601,6 +606,84 @@ class MLflowDatasetTrackingExample:
             mlflow.log_dict(eval_results.describe().to_dict(), "evaluation_summary.json")
             
             mlflow.end_run()
+
+    def example_5_1_evaluation_with_model_evaluate(self):
+        """
+        Example 5.1: Model Evaluation with mlflow.models.evaluate()
+        
+        Demonstrates:
+        - Using MLflow Evaluate API for structured evaluation
+        - Tracking evaluation datasets and metrics together
+        - Generating evaluation reports with dataset context
+        """
+        print("\n" + "="*70)
+        print("EXAMPLE 5.1: Model Evaluation with mlflow.models.evaluate() - NYC Taxi")
+        print("="*70)
+    
+        # Load and prepare data
+        try:
+            data = self.load_taxi_data()
+        except FileNotFoundError:
+            print("⚠️  Using sample taxi data")
+            data = pd.DataFrame({
+                'trip_distance': np.random.uniform(0.1, 50, 500),
+                'trip_duration': np.random.uniform(60, 3600, 500),
+                'fare_amount': np.random.uniform(2.5, 100, 500),
+                'passenger_count': np.random.randint(1, 7, 500),
+                'pickup_hour': np.random.randint(0, 24, 500),
+            })
+        # Prepare features
+        numeric_cols = data.select_dtypes(include=[np.number]).columns.tolist()
+        feature_cols = [col for col in numeric_cols if col != 'fare_amount']
+        
+        X = data[feature_cols] if feature_cols else data.drop('fare_amount', axis=1)
+        y = data['fare_amount']
+        
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.3, random_state=42
+        )
+
+        # Train model
+        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        model.fit(X_train, y_train)
+        
+        print(f"✓ Trained model on {len(X_train)} samples")
+        
+        with mlflow.start_run(run_name="nyc_taxi_model_evaluation_2"):
+            # Log training dataset
+            train_data = X_train.copy()
+            train_data['fare_amount'] = y_train.values
+            train_dataset = mlflow.data.from_pandas(
+                train_data, source="nyc_taxi_training",
+                name="nyc-taxi-train", targets="fare_amount"
+            )
+            mlflow.log_input(train_dataset, context="training")
+
+            # Create evaluation dataset
+            eval_data = X_test.copy()
+            eval_data['fare_amount'] = y_test.values
+            eval_dataset = mlflow.data.from_pandas(
+                eval_data, source="nyc_taxi_evaluation",
+                name="nyc-taxi-eval", targets="fare_amount"
+            )
+            mlflow.log_input(eval_dataset, context="evaluation")
+
+            # Log model
+            mlflow.sklearn.log_model(model, name="model", input_example=X_test.head())
+
+            #Evaluate using mlflow.models.evaluate
+            result = mlflow.models.evaluate(
+                model="runs:/{}/model".format(mlflow.active_run().info.run_id),
+                data=eval_dataset,
+                model_type="regressor",
+            )
+
+            print(f"\nEvaluation Results:")
+            print(f"  RMSE: ${result.metrics['root_mean_squared_error']:.2f}")
+            print(f"  MAE: ${result.metrics['mean_absolute_error']:.2f}")
+            print(f"  R²: {result.metrics['r2_score']:.4f}")
+
+            mlflow.end_run()
     
     def example_6_production_monitoring(self):
         """
@@ -635,7 +718,7 @@ class MLflowDatasetTrackingExample:
         batch_data['actual_fare'] = y_true
         batch_data['prediction_error'] = y_pred - y_true
         
-        print(f"✓ Created production batch data: {batch_data.shape}")
+        print(f"✓ Created production batch data (simulated): {batch_data.shape}")
         
         # Create dataset for monitoring
         batch_dataset = mlflow.data.from_pandas(
@@ -645,7 +728,7 @@ class MLflowDatasetTrackingExample:
             targets="actual_fare"
         )
         
-        with mlflow.start_run(run_name=f"batch_monitor_{datetime.now().date()}"):
+        with mlflow.start_run(run_name=f"batch_simulation_data_monitor_{datetime.now().date()}"):
             mlflow.log_input(batch_dataset, context="production_batch")
             
             # Log batch metadata
@@ -694,6 +777,157 @@ class MLflowDatasetTrackingExample:
             
             mlflow.end_run()
 
+    def example_6_1_production_monitoring(self):
+        """
+        Example 6.1: Production Batch Monitoring - NYC Taxi
+
+        Demonstrates:
+        - Training on Oct+Nov 2023, monitoring on Dec 2023
+        - Tracking production batch datasets
+        - Using mlflow.models.evaluate for batch evaluation
+        - Detecting potential drift across months
+        - Detecting drift when R² drops below threshold
+        """
+        print("\n" + "="*70)
+        print("EXAMPLE 6: Production Batch Monitoring - Taxi Fare Prediction")
+        print("="*70)
+
+        DRIFT_R2_THRESHOLD = 0.85
+
+        # Load training data (Oct + Nov 2023)
+        train_months = []
+        for month in ["2023-10", "2023-11"]:
+            try:
+                df = pd.read_parquet(f"data/raw/green_tripdata_{month}.parquet")
+                train_months.append(df)
+                print(f"✓ Loaded {month}: {len(df)} records")
+            except FileNotFoundError:
+                print(f"⚠️  {month} not found")
+
+        # Load production batch (Dec 2023)
+        try:
+            batch_raw = pd.read_parquet("data/raw/green_tripdata_2023-12.parquet")
+            print(f"✓ Loaded 2023-12 (batch): {len(batch_raw)} records")
+        except FileNotFoundError:
+            print("⚠️  December data not found")
+            return
+
+        if not train_months:
+            print("⚠️  No training data found")
+            return
+
+        train_raw = pd.concat(train_months, ignore_index=True)
+
+        # Engineer features from raw timestamps
+        train_raw['lpep_pickup_datetime'] = pd.to_datetime(train_raw['lpep_pickup_datetime'])
+        train_raw['lpep_dropoff_datetime'] = pd.to_datetime(train_raw['lpep_dropoff_datetime'])
+        train_raw['trip_duration'] = (train_raw['lpep_dropoff_datetime'] - train_raw['lpep_pickup_datetime']).dt.total_seconds()
+        train_raw['pickup_hour'] = train_raw['lpep_pickup_datetime'].dt.hour
+
+        batch_raw['lpep_pickup_datetime'] = pd.to_datetime(batch_raw['lpep_pickup_datetime'])
+        batch_raw['lpep_dropoff_datetime'] = pd.to_datetime(batch_raw['lpep_dropoff_datetime'])
+        batch_raw['trip_duration'] = (batch_raw['lpep_dropoff_datetime'] - batch_raw['lpep_pickup_datetime']).dt.total_seconds()
+        batch_raw['pickup_hour'] = batch_raw['lpep_pickup_datetime'].dt.hour
+
+        # Prepare features
+        feature_cols = ['trip_distance', 'trip_duration', 'passenger_count', 'pickup_hour']
+        target = 'fare_amount'
+
+        # Clean: drop nulls and negative fares (intentionally keep outliers to show drift)
+        train_data = train_raw[feature_cols + [target]].dropna()
+        train_data = train_data[train_data[target] > 0]
+
+        batch_data = batch_raw[feature_cols + [target]].dropna()
+        batch_data = batch_data[batch_data[target] > 0]
+
+        # Sample batch to simulate daily production volume
+        batch_data = batch_data.sample(n=min(1000, len(batch_data)), random_state=42)
+
+        X_train = train_data[feature_cols]
+        y_train = train_data[target]
+        X_batch = batch_data[feature_cols]
+        y_batch = batch_data[target]
+
+        # Train model on Oct+Nov
+        model = RandomForestRegressor(n_estimators=100, max_depth=15, random_state=42)
+        model.fit(X_train, y_train)
+        print(f"\n✓ Trained on Oct+Nov: {len(X_train)} samples")
+
+        # Predict on Dec batch
+        y_pred = model.predict(X_batch)
+
+        batch_results = X_batch.copy()
+        batch_results['predicted_fare'] = y_pred
+        batch_results['actual_fare'] = y_batch.values
+
+        print(f"✓ Production batch (Dec): {len(batch_results)} samples")
+
+        batch_date = "2023-12"
+        model_version = "v1.0"
+
+        # Create dataset with targets and predictions
+        batch_dataset = mlflow.data.from_pandas(
+            batch_results,
+            source=f"production_batch_{batch_date}",
+            name=f"batch_predictions_{batch_date}",
+            targets="actual_fare" if "actual_fare" in batch_results.columns else None,
+            predictions="predicted_fare" if "predicted_fare" in batch_results.columns else None,
+        )
+
+        with mlflow.start_run(run_name=f"Batch_Monitor_{batch_date}"):
+            mlflow.log_input(batch_dataset, context="production_batch")
+
+            mlflow.log_params({
+                "batch_date": batch_date,
+                "model_version": model_version,
+                "training_months": "2023-10,2023-11",
+                "batch_size": len(batch_results),
+                "has_ground_truth": "actual_fare" in batch_results.columns,
+                "use_case": "NYC Taxi Fare Prediction",
+                "drift_r2_threshold": DRIFT_R2_THRESHOLD,
+            })
+
+            # Monitor prediction distribution
+            if "predicted_fare" in batch_results.columns:
+                mlflow.log_metrics({
+                    "prediction_mean": batch_results["predicted_fare"].mean(),
+                    "prediction_std": batch_results["predicted_fare"].std(),
+                    "prediction_min": batch_results["predicted_fare"].min(),
+                    "prediction_max": batch_results["predicted_fare"].max(),
+                })
+
+            # Evaluate if ground truth is available
+            if all(col in batch_results.columns for col in ["predicted_fare", "actual_fare"]):
+                result = mlflow.models.evaluate(
+                    data=batch_dataset,
+                    model_type="regressor",
+                )
+
+                r2 = result.metrics.get('r2_score', None)
+                drift_detected = r2 is not None and r2 < DRIFT_R2_THRESHOLD
+
+                # Log drift status
+                mlflow.log_metrics({"drift_detected": int(drift_detected)})
+                mlflow.set_tag("drift_status", "DRIFT" if drift_detected else "OK")
+
+                print(f"\nProduction Batch Evaluation:")
+                print(f"  Training: Oct+Nov 2023")
+                print(f"  Batch: Dec 2023")
+                print(f"  Batch size: {len(batch_results)}")
+                print(f"  RMSE: ${result.metrics.get('root_mean_squared_error', 'N/A'):.2f}")
+                print(f"  MAE: ${result.metrics.get('mean_absolute_error', 'N/A'):.2f}")
+                print(f"  R²: {r2:.4f}")
+
+                if drift_detected:
+                    print(f"\n  ⚠️  DRIFT DETECTED: R² ({r2:.4f}) < threshold ({DRIFT_R2_THRESHOLD})")
+                    print(f"  → Likely caused by fare outliers (>$200) in Dec data")
+                    print(f"  → Consider retraining or adding outlier filtering")
+                else:
+                    print(f"\n  ✓ No drift: R² ({r2:.4f}) >= threshold ({DRIFT_R2_THRESHOLD})")
+
+
+            mlflow.end_run()
+
 
 def run_all_examples():
     """Run all MLflow dataset tracking examples with NYC taxi data."""
@@ -718,7 +952,9 @@ def run_all_examples():
         example.example_3_dataset_versioning()
         example.example_4_training_with_dataset_tracking()
         example.example_5_evaluation_with_dataset()
+        example.example_5_1_evaluation_with_model_evaluate()
         example.example_6_production_monitoring()
+        example.example_6_1_production_monitoring()
     except Exception as e:
         print(f"\n⚠️  Error during execution: {e}")
         print("\nMake sure you have:")
@@ -736,7 +972,9 @@ def run_all_examples():
     print("  ✓ Example 3: Dataset versioning through preprocessing stages")
     print("  ✓ Example 4: Model training with dataset tracking (fare prediction)")
     print("  ✓ Example 5: Model evaluation with datasets")
+    print("  ✓ Example 5.1: Model evaluation with mlflow.models.evaluate()")
     print("  ✓ Example 6: Production batch monitoring for daily predictions")
+    print("  ✓ Example 6.1: Production monitoring with mlflow.models.evaluate()")
     print("\nNext steps:")
     print("  1. Check MLflow UI for all tracked experiments")
     print("  2. Compare different dataset versions")
